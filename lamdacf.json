@@ -1,0 +1,273 @@
+{
+
+    "AWSTemplateFormatVersion": "2010-09-09",
+
+    "Description": "",
+
+    "Metadata": {},
+
+    "Parameters": {},
+
+    "Mappings": {},
+
+    "Conditions": {},
+
+    "Resources": {
+
+        "StopInstanceLambda": {
+
+            "Type": "AWS::Lambda::Function",
+
+            "Properties": {
+
+                "Handler": "lambda_function.lambda_handler",
+
+                "Role": {
+
+                    "Fn::GetAtt": [
+
+                        "StopInstanceLambdaRole",
+
+                        "Arn"
+
+                    ]
+
+                },
+
+                "Code": {
+
+                    "S3Bucket": "demoec2stopstart",
+
+                    "S3Key": "demoec2.zip"
+
+                },
+
+                "Runtime": "python3.9",
+
+                "Timeout": 30,
+
+                "MemorySize": 128
+
+            }
+
+        },
+
+        "StopInstanceLambdaRole": {
+
+            "Type": "AWS::IAM::Role",
+
+            "Properties": {
+
+                "AssumeRolePolicyDocument": {
+
+                    "Version": "2012-10-17",
+
+                    "Statement": [
+
+                        {
+
+                            "Effect": "Allow",
+
+                            "Principal": {
+
+                                "Service": [
+
+                                    "lambda.amazonaws.com"
+
+                                ]
+
+                            },
+
+                            "Action": [
+
+                                "sts:AssumeRole"
+
+                            ]
+
+                        }
+
+                    ]
+
+                }
+
+            }
+
+        },
+
+        "StopInstanceLambdaPolicies": {
+
+            "Type": "AWS::IAM::Policy",
+
+            "Properties": {
+
+                "PolicyName": "stop-instance-lambda-policies",
+
+                "PolicyDocument": {
+
+                    "Version": "2012-10-17",
+
+                    "Statement": [
+
+                        {
+
+                            "Effect": "Allow",
+
+                            "Action": [
+
+                                "s3:ListBucket",
+
+                                "s3:Getobject"
+
+                            ],
+
+                            "Resource": [
+
+                                "arn:aws:s3:::demoec2stopstart",
+
+                                "arn:aws:s3:::demoec2stopstart/*"
+
+                            ]
+
+                        },
+
+                        {
+
+                            "Effect": "Allow",
+
+                            "Action": [
+
+                                "ec2:Start*",
+
+                                "ec2:Stop*"
+
+                            ],
+
+                            "Resource": "*"
+
+                        },
+
+                        {
+
+                            "Effect": "Allow",
+
+                            "Action": [
+
+                                "logs:CreateLogGroup",
+
+                                "logs:CreateLogStream",
+
+                                "logs:PutLogEvents",
+
+                                "s3-object-lambda:WriteGetObjectResponse"
+
+                            ],
+
+                            "Resource": "*"
+
+                        }
+
+                    ]
+
+                },
+
+                "Roles": [
+
+                    {
+
+                        "Ref": "StopInstanceLambdaRole"
+
+                    }
+
+                ]
+
+            }
+
+        },
+
+        "ScheduledRule": {
+
+            "Type": "AWS::Events::Rule",
+
+            "Properties": {
+
+                "Description": "ScheduledRule",
+
+                "ScheduleExpression": "cron(0 20 * * ? *)",
+
+                "State": "ENABLED",
+
+                "Targets": [
+
+                    {
+
+                        "Arn": {
+
+                            "Fn::GetAtt": [
+
+                                "StopInstanceLambda",
+
+                                "Arn"
+
+                            ]
+
+                        },
+
+                        "Id": "StopInstanceLambda"
+
+                    }
+
+                ]
+
+            }
+
+        },
+
+        "EventBridgePermission": {
+
+            "Type": "AWS::Lambda::Permission",
+
+            "Properties": {
+
+                "FunctionName": {
+
+                    "Fn::GetAtt": [
+
+                        "StopInstanceLambda",
+
+                        "Arn"
+
+                    ]
+
+                },
+
+                "Action": "lambda:InvokeFunction",
+
+                "Principal": "events.amazonaws.com",
+
+                "SourceAccount": {
+
+                    "Ref": "AWS::AccountId"
+
+                },
+
+                "SourceArn": {
+
+                    "Fn::GetAtt": [
+
+                        "ScheduledRule",
+
+                        "Arn"
+
+                    ]
+
+                }
+
+            }
+
+        }
+
+    },
+
+    "Outputs": {}
+
+}
